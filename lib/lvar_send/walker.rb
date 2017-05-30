@@ -11,11 +11,17 @@ module LvarSend
       Cheffile Dangerfile Deliverfile Fastfile Gemfile Guardfile Jarfile Mavenfile
       Podfile Puppetfile Rakefile Snapfile Thorfile Vagabondfile Vagrantfile
     ].freeze
+    ExcludeDir = %w[
+      node_modules
+    ]
 
-    def self.walk(root_dir, &block)
+    def self.walk(root_dir)
+      return enum_for(__method__, root_dir) unless block_given?
+
       Find.find(root_dir) do |path|
-        if Extensions.include?(File.extname(path)) || BaseNames.include?(File.baesname(path))
-          block.call(path)
+        if Extensions.include?(File.extname(path)) || BaseNames.include?(File.basename(path))
+          Find.prune if ExcludeDir.include?(File.basename(path))
+          yield path
         end
       end
     end

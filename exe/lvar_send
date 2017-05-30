@@ -1,0 +1,5 @@
+#!/usr/bin/env ruby
+
+require 'lvar_send'
+
+exit LvarSend::CLI.new(ARGV).run
