@@ -6,43 +6,36 @@ module LvarSend
     end
 
     def run
-      lvar_positions = node_positions(root_dir: @before, type: :lvar)
-      require 'pp'
-      pp lvar_positions
+      patches = dir_to_patches(@before, @after)
+        .select{|patch| Walker.ruby_file?(patch.file)}
+      patches.each do |patch|
+        file = patch.file
+        before_path = file.start_with?(@after) ? file.sub(@after, @before) : file
 
-      puts '----------------------------'
-      cond = lambda do |node|
-        recv, _name, *args = *node
-        recv.nil? && args.empty?
+        lvar_positions = positions(path: before_path, type: :lvar)
+        p lvar_positions
+        send_positions = positions(path: file, type: :send, &simple_send_node?)
+        p send_positions
       end
-      send_positions = node_positions(root_dir: @before, type: :send, &cond)
-      pp send_positions
+
       return 0
     end
 
     private
 
-    def node_positions(root_dir:, type:, &cond)
-      Walker.walk(root_dir).map do |path|
-        nodes = nodes(path: path, type: type)
-        nodes = nodes.select{|node| cond.call(node)} if cond
-
-        positions = nodes.map do |node|
-          loc = node.loc.expression
-          {
-            line: loc.line,
-            column: loc.column,
-            name: node_to_name(node),
-          }
-        end
-        [path, positions]
-      end.to_h
-    end
-
-    def nodes(path:, type:)
+    def positions(path:, type:, &cond)
       ast = Parser::CurrentRuby.parse(File.read(path))
       return [] unless ast
-      find_nodes(ast, type: type)
+      nodes = find_nodes(ast, type: type)
+      nodes = nodes.select{|node| cond.call(node)} if cond
+      nodes.map do |node|
+        loc = node.loc.expression
+        {
+          line: loc.line,
+          column: loc.column,
+          name: node_to_name(node),
+        }
+      end
     end
 
     def find_nodes(node, type:)
@@ -62,7 +55,6 @@ module LvarSend
       end
     end
 
-    # TODO: diff
     # @param a [Hash{line:, column:, name:}] an position
     # @param b [Hash{line:, column:, name:}] an position
     # @param diff [WIP] WIP
@@ -70,6 +62,21 @@ module LvarSend
       a.line == b.line &&
         a.column == b.column &&
         a.name == b.name
+    end
+
+    # @param before [String] a directory
+    # @param after [String] a directory
+    def dir_to_patches(before, after)
+      diff, _stderr, _status = Open3.capture3('git', 'diff', '--no-index', before, after)
+
+      GitDiffParser.parse(diff)
+    end
+
+    def simple_send_node?
+      lambda do |node|
+        recv, _name, *args = *node
+        recv.nil? && args.empty?
+      end
     end
   end
 end

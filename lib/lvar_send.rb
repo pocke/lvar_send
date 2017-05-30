@@ -1,4 +1,8 @@
+require 'open3'
+require 'find'
+
 require 'parser/current'
+require 'git_diff_parser'
 
 require "lvar_send/version"
 require 'lvar_send/cli'
