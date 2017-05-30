@@ -18,7 +18,7 @@ module LvarSend
         # OPTIMIZE
         lvar_positions.each do |lvar_pos|
           send_positions.each do |send_pos|
-            puts "#{before_path}:#{lvar_pos[:line]}#{lvar_pos[:col]} #{lvar_pos[:name]} is not lvar" if same_position?(lvar_pos, send_pos, patch: 'TODO')
+            puts "#{before_path}:#{lvar_pos[:line]}#{lvar_pos[:col]} #{lvar_pos[:name]} is not lvar" if same_position?(lvar_pos, send_pos, diff: diff)
           end
         end
       end
@@ -60,13 +60,26 @@ module LvarSend
       end
     end
 
-    # @param a [Hash{line:, column:, name:}] an position
-    # @param b [Hash{line:, column:, name:}] an position
-    # @param patch [GitDiffParser::Patch]
-    def same_position?(a, b, patch:)
-      a[:line] == b[:line] &&
-        a[:column] == b[:column] &&
-        a[:name] == b[:name]
+    # @param before_pos [Hash{line:, column:, name:}] an position
+    # @param after_pos [Hash{line:, column:, name:}] an position
+    # @param diff [GitDiff::File]
+    def same_position?(before_pos, after_pos, diff:)
+      changed_lines = diff.hunks.flat_map(&:lines).reject{|line| line.instance_of?(GitDiff::Line::Context)}
+      before_line = before_pos[:line]
+      changed_lines.each do |line|
+        n = line.line_number.left
+        break if n && n > before_pos[:line]
+        case line
+        when GitDiff::Line::Addition
+          before_line += 1
+        when GitDiff::Line::Deletion
+          before_line -= 1
+        end
+      end
+
+      before_line == after_pos[:line] &&
+        before_pos[:column] == after_pos[:column] &&
+        before_pos[:name] == after_pos[:name]
     end
 
     # @param before [String] a directory
