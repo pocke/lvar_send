@@ -13,9 +13,14 @@ module LvarSend
         before_path = file.start_with?(@after) ? file.sub(@after, @before) : file
 
         lvar_positions = positions(path: before_path, type: :lvar)
-        p lvar_positions
         send_positions = positions(path: file, type: :send, &simple_send_node?)
-        p send_positions
+
+        # OPTIMIZE
+        lvar_positions.each do |lvar_pos|
+          send_positions.each do |send_pos|
+            puts "#{file}:#{lvar_pos[:line]}#{lvar_pos[:col]} #{lvar_pos[:name]} is not lvar" if same_position?(lvar_pos, send_pos, patch: 'TODO')
+          end
+        end
       end
 
       return 0
@@ -57,11 +62,11 @@ module LvarSend
 
     # @param a [Hash{line:, column:, name:}] an position
     # @param b [Hash{line:, column:, name:}] an position
-    # @param diff [WIP] WIP
-    def same_position?(a, b, diff: nil)
-      a.line == b.line &&
-        a.column == b.column &&
-        a.name == b.name
+    # @param patch [GitDiffParser::Patch]
+    def same_position?(a, b, patch:)
+      a[:line] == b[:line] &&
+        a[:column] == b[:column] &&
+        a[:name] == b[:name]
     end
 
     # @param before [String] a directory
