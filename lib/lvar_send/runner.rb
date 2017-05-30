@@ -6,19 +6,19 @@ module LvarSend
     end
 
     def run
-      patches = dir_to_patches(@before, @after)
-        .select{|patch| Walker.ruby_file?(patch.file)}
-      patches.each do |patch|
-        file = patch.file
-        before_path = file.start_with?(@after) ? file.sub(@after, @before) : file
+      diffs = dir_to_patches(@before, @after)
+        .select{|diff| Walker.ruby_file?(diff.a_path)}
+      diffs.each do |diff|
+        before_path = diff.a_path
+        after_path = diff.b_path
 
         lvar_positions = positions(path: before_path, type: :lvar)
-        send_positions = positions(path: file, type: :send, &simple_send_node?)
+        send_positions = positions(path: after_path, type: :send, &simple_send_node?)
 
         # OPTIMIZE
         lvar_positions.each do |lvar_pos|
           send_positions.each do |send_pos|
-            puts "#{file}:#{lvar_pos[:line]}#{lvar_pos[:col]} #{lvar_pos[:name]} is not lvar" if same_position?(lvar_pos, send_pos, patch: 'TODO')
+            puts "#{before_path}:#{lvar_pos[:line]}#{lvar_pos[:col]} #{lvar_pos[:name]} is not lvar" if same_position?(lvar_pos, send_pos, patch: 'TODO')
           end
         end
       end
@@ -74,7 +74,7 @@ module LvarSend
     def dir_to_patches(before, after)
       diff, _stderr, _status = Open3.capture3('git', 'diff', '--no-index', before, after)
 
-      GitDiffParser.parse(diff)
+      GitDiff.from_string(diff).files
     end
 
     def simple_send_node?

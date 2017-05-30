@@ -24,5 +24,5 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "rake", "~> 10.0"
 
   spec.add_dependency 'parser', '>= 2.4.0'
-  spec.add_dependency 'git_diff_parser'
+  spec.add_dependency 'git_diff'
 end
