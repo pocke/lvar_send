@@ -1,7 +1,12 @@
 require 'open3'
 require 'find'
+require 'stringio'
 
-require 'parser/current'
+require 'lvar_send/silencer'
+
+LvarSend::Silencer.silently do
+  require 'parser/current'
+end
 require 'git_diff'
 
 require "lvar_send/version"
